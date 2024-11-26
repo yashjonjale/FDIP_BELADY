@@ -1,0 +1,300 @@
+# ChampSim
+
+A configuration file specifies many aspects of the modeled CPU core, including frequency, cache configuration, re-order buffer size, load and store queue sizes, widths for instruction fetch, decode, execution and retire, and a variety of latencies for different components.
+
+The trace format includes only virtual memory addresses, so ChampSim simulates a page table and TLB hierarchy with arbitrary mappings of virtual to physical pages.
+
+The cache interfaces with a read queue, a write queue, and a prefetch queue.
+
+The cache architecture is flexible. The sink of all TLB
+ requests must be configured to be a core’s hardware page
+ table walker, whose lower level is, in turn, the same core’s
+ L1 data cache, and the ultimate sink of all instruction or
+ data memory requests must be configured to be the physical
+ memory. Beyond that, the cache hierarchy can be arbitrary.
+ Caches can be shared between cores and can be non-uniform
+ levels of depth
+
+  ChampSim is capable of simulating multicore systems, an example
+ of which is given here. Each core has its own branch target predictor and
+ branch prediction module that may be configured uniquely from one another.
+ Each core has a private cache hierarchy and virtual memory hardware support.
+ Every core’s memory hierarchy shares a last level cache, which is subsequently
+ connected to the main memory model
+
+Everywhere inside champsim, whatever memory requests are made these requests are made by packaging it inside a packet, and adding the packet inside the queue. For example a load request, the core appends a packet to the load queue. The queue is simultaneously being processed by the structure to which the request was made. The point is, expect every function that is trying to make a request to a structure to first just a construct a packet (PACKET class) and then add to the corresponding queue.
+
+
+
+
+---
+
+# The Legacy ChampSim Module System
+
+Previous versions of ChampSim used the following module system. Many modules exist in published artifacts, so documentation is included here. New work should use the updated module system.
+
+Legacy modules can be enabled by adding an empty file named `__legacy__` in the same directory as the module sources. This is the preferred method. Alternatively, ChampSim can be configured with:
+
+```json
+{
+    "L2C": {
+        "prefetcher": {
+            "path": "../path/to/module",
+            "legacy": true
+        }
+    }
+}
+```
+
+ChampSim uses four kinds of modules:
+- Branch Direction Predictors
+- Branch Target Predictors
+- Memory Prefetchers
+- Cache Replacement Policies
+
+Each of these is implemented as a set of hook functions. **Each hook must be implemented, or compilation will fail.**
+
+---
+
+## Branch Predictors
+
+A branch predictor module must implement three functions:
+
+### `initialize_branch_predictor`
+
+```cpp
+void O3_CPU::initialize_branch_predictor();
+```
+
+- Called when the core is initialized.
+- Used to initialize elements of dynamic structures (e.g., `std::vector`, `std::map`).
+
+---
+
+### `predict_branch`
+
+```cpp
+uint8_t O3_CPU::predict_branch(uint64_t ip, uint64_t predicted_target, uint8_t always_taken, uint8_t branch_type);
+```
+
+- Called when a prediction is needed.
+- Parameters:
+  - `ip`: Instruction pointer of the branch.
+  - `predicted_target`: Predicted target from the branch target predictor.
+  - `always_taken`: Nonzero if the branch is always taken.
+  - `branch_type`: One of the following:
+    - `BRANCH_DIRECT_JUMP`
+    - `BRANCH_INDIRECT`
+    - `BRANCH_CONDITIONAL`
+    - `BRANCH_DIRECT_CALL`
+    - `BRANCH_INDIRECT_CALL`
+    - `BRANCH_RETURN`
+    - `BRANCH_OTHER`
+
+---
+
+### `last_branch_result`
+
+```cpp
+void O3_CPU::last_branch_result(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+```
+
+- Called when a branch is resolved.
+- Parameters:
+  - Same as in `predict_branch`, but all values are guaranteed to be correct.
+
+---
+
+## Branch Target Buffers (BTB)
+
+A BTB module must implement three functions:
+
+### `initialize_btb`
+
+```cpp
+void O3_CPU::initialize_btb();
+```
+
+- Called when the core is initialized.
+- Used to initialize dynamic structures.
+
+---
+
+### `btb_prediction`
+
+```cpp
+std::pair<uint64_t, bool> O3_CPU::btb_prediction(uint64_t ip);
+```
+
+- Called when a prediction is needed.
+- Parameters:
+  - `ip`: Instruction pointer of the branch.
+- Returns:
+  - A pair containing the predicted address and a boolean indicating if the branch is always taken.
+
+---
+
+### `update_btb`
+
+```cpp
+void O3_CPU::update_btb(uint64_t ip, uint64_t branch_target, uint8_t taken, uint8_t branch_type);
+```
+
+- Called when a branch is resolved.
+- Parameters:
+  - `ip`, `branch_target`, `taken`, `branch_type`: As described earlier.
+
+---
+
+## Memory Prefetchers
+
+A prefetcher module must implement five or six functions:
+
+### `prefetcher_initialize`
+
+```cpp
+void CACHE::prefetcher_initialize();
+```
+
+- Called when the cache is initialized.
+- Used to initialize dynamic structures.
+
+---
+
+### `prefetcher_cache_operate`
+
+```cpp
+uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in);
+```
+
+- Called when a tag is checked in the cache.
+- Parameters:
+  - `addr`: Address of the packet.
+  - `ip`: Address of the instruction initiating the demand.
+  - `cache_hit`: Nonzero if the tag check is a hit.
+  - `useful_prefetch`: True if the tag check hit a prior prefetch.
+  - `type`: Type of access.
+  - `metadata_in`: Metadata carried along by the packet.
+
+---
+
+### `prefetcher_cache_fill`
+
+```cpp
+uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint32_t metadata_in);
+```
+
+- Called when a miss is filled in the cache.
+
+---
+
+### `prefetcher_cycle_operate`
+
+```cpp
+void CACHE::prefetcher_cycle_operate();
+```
+
+- Called each cycle, after all other operations have completed.
+
+---
+
+### `prefetcher_final_stats`
+
+```cpp
+void CACHE::prefetcher_final_stats();
+```
+
+- Called at the end of the simulation to print statistics.
+
+---
+
+### `prefetcher_branch_operate` (For instruction prefetchers)
+
+```cpp
+void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+```
+
+- Parameters:
+  - `ip`: Instruction pointer of the branch.
+  - `branch_type`: Type of branch.
+  - `branch_target`: Instruction pointer of the target.
+
+---
+
+## Replacement Policies
+
+A replacement policy module must implement four functions:
+
+### `initialize_replacement`
+
+```cpp
+void CACHE::initialize_replacement();
+```
+
+- Called when the cache is initialized.
+
+---
+
+### `find_victim`
+
+```cpp
+uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t set, const BLOCK* current_set, uint64_t ip, uint64_t addr, uint32_t type);
+```
+
+- Called when a tag is checked in the cache.
+
+---
+
+### `update_replacement_state`
+
+```cpp
+void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t addr, uint64_t ip, uint64_t victim_addr, uint8_t hit);
+```
+
+- Called when a hit occurs or a miss is filled in the cache.
+
+---
+
+### `replacement_final_stats`
+
+```cpp
+void CACHE::replacement_final_stats();
+```
+
+- Called at the end of the simulation to print statistics.
+
+---
+
+**Note:** This documentation is for the legacy module system. For new projects, consider using the updated system.
+
+--- 
+
+- **What does "instruction pointer of the branch" mean?**  
+  It is the memory address of the branch instruction being executed.
+
+- **What is the branch target?**  
+  The branch target is the memory address where control jumps if the branch is taken.
+
+- **Is the branch target predefined by the trace?**  
+  Yes, the trace provides the branch target, but simulators use it to evaluate predictions.
+
+- **What does "a tag being checked" mean?**  
+  It is the process of comparing the memory address tag with cache tags to determine a hit or miss.
+
+- **Why would `find_victim` not be called on a cache hit?**  
+  `find_victim` is only called on a cache miss to decide which block to evict.
+
+- **Why is it phrased "when a tag is checked"?**  
+  It refers to the decision point after a tag check, where cache misses trigger `find_victim`.
+
+## Decoupled Front End
+
+Your BTB, BP are decoupled from the Fetch machinery, more like different modules
+
+These are conntected by the fetch queue a.k.a. the IFETCH BUFFER
+
+The BTB and BP fill the IFETCH BUFFER, and the fetch machinery picks up only from this buffer.
+
+
+For this we make a prefetch window ( kinda like cwnd in TCP ). To act like tcp we need an acknowledgement of usefulness,     so we already a prefetch tag in for the cache line in the way, and we disable that flag once it is accessed and mark us    eful or not, but we need this per set? Not a big overhead for this. So, the prefetcher will keep monitoring and will kee    p a prefetching limit per set, and make code_prefetch out of order in the queue the prefetch queues out of order keeping     the limit in mind. This limit will be a function of the set line prefetch usefulness percentage ( lower percentage here     can be due to branch mispredictions too ) 
+

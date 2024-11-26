@@ -1,0 +1,26 @@
+
+
+The following are functions we need to track
+
+okay so the replacement policy has to update the cache, which means that the corresponding functions also have to a part of it, but we need access to the FTQ for the replacment policy? which is defined in the l1i_prefetcher.cc and I want to accesss it in l1i_replacement.cc
+
+so how do we do this ??
+
+
+For a first lets just forget ftq, lets just do this without it 
+
+replicate llc_replacement exactly for l1i_replacement
+
+add_victim
+update_replcaement_state
+initialise
+final stats
+
+
+added else if conditions for the first two at corresondng places blocking the default replacement policy
+
+
+
+Now to implement belady, a little bit tricky but some jugaad needed here
+
+

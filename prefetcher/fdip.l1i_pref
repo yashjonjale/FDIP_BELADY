@@ -1,0 +1,300 @@
+#include "ooo_cpu.h"
+#include "cache.h"
+#include <stack>
+#include <algorithm>
+#include <math.h>
+
+
+/**************************************** Basic Structures **************************************/
+
+#define MAX_PFETCHQ_ENTRIES 48
+#define MAX_RECENT_PFETCH 10
+#define MAX_SPECQ_ENTRIES 48
+#define MAX_UNSPECQ_ENTRIES 128
+/**************************************** Compoenets for prefetching **************************************/
+
+std::deque<uint64_t> prefetch_queue;	//Storage: 64-bits * 48 (queue size) = 384 bytes
+std::deque<uint64_t> prefetch_queue_spec;	//Storage: 64-bits * 48 (queue size) = 384 bytes
+std::deque<uint64_t> recent_prefetches;	//Storage: 64-bits * 10 (queue size) = 80 bytes
+uint64_t disp[66] = {0};
+uint64_t lowBits[66] = {0};
+// CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", 128/*FETCH_WIDTH*2*/}; ///Yash Crucial for imprecise FDIP
+CORE_BUFFER* ifetch_replica = 0x0;
+/**************************************** Prefetcher Operation **************************************/
+namespace
+{
+std::map<CACHE*, std::vector<uint64_t>> last_used_cycles;
+}
+bool on_stall = false;
+std::deque<uint64_t> spec_queue;	//Storage: 64-bits * 48 (queue size) = 384 bytes
+// std::deque<uint64_t> unspec_queue;	//Storage: 64-bits * 128 (queue size) = 1024 bytes // this is mimic of the ifetch buffer
+
+// auto itr_stall_begin = spec_queue.end();
+
+void O3_CPU::l1i_prefetcher_initialize() 
+{
+
+}
+
+void O3_CPU::l1i_prefetcher_instruction_operate(uint64_t ip)
+{
+	on_stall = false;
+	spec_queue.clear();
+	prefetch_queue_spec.clear();
+	uint64_t block_addr = ((ip >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
+        if (block_addr == 0)
+                return;
+
+	std::deque<uint64_t>::iterator it = std::find(prefetch_queue.begin(), prefetch_queue.end(), block_addr);
+	if (it == prefetch_queue.end()) {
+		std::deque<uint64_t>::iterator it1 = std::find(recent_prefetches.begin(), recent_prefetches.end(), block_addr);
+		if (it1 == recent_prefetches.end()) {
+			prefetch_queue.push_back(block_addr);
+		}
+	}
+}
+
+void O3_CPU::l1i_prefetcher_instruction_spec_operate(uint64_t ip)  //called every cycle during fetch stall
+{
+	on_stall = true;
+
+	uint64_t block_addr = ((ip >> LOG2_BLOCK_SIZE) << LOG2_BLOCK_SIZE);
+	if (block_addr == 0)
+		return;
+	//fill spec queue for belady
+
+	if (spec_queue.size() < MAX_SPECQ_ENTRIES){
+		spec_queue.push_back(block_addr);
+	}
+	// spec_queue.push_back(ip);
+	
+
+	//prefetch
+	std::deque<uint64_t>::iterator it = std::find(prefetch_queue.begin(), prefetch_queue.end(), block_addr);
+	if (it == prefetch_queue.end()) {
+		std::deque<uint64_t>::iterator it1 = std::find(recent_prefetches.begin(), recent_prefetches.end(), block_addr);
+		if (it1 == recent_prefetches.end()) {
+			std::deque<uint64_t>::iterator it2 = std::find(prefetch_queue_spec.begin(), prefetch_queue_spec.end(), block_addr);
+			if (it2 == prefetch_queue_spec.end()) {
+				prefetch_queue_spec.push_back(block_addr);
+			}
+		}
+	}
+}
+
+void O3_CPU::l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target)
+{
+		//we check if the branch at some point exists in the spec pq, if it does, we check the targets, if 
+
+
+
+        if (branch_target && branch_type != BRANCH_RETURN) {
+                /*Find the number of bits needed to encode the target offset*/
+                uint64_t target_offset; 
+                if (branch_target > ip) {
+                        target_offset = branch_target - ip;
+                } else {
+                        target_offset = ip - branch_target;
+                }
+
+		int num_bits = 0;
+	        if (target_offset) {
+                	num_bits = (int)(log2((double)target_offset));
+                	/* The cast "(int)log2" rounds down to lower integer, however we want to round it to upper integer, so add 1 to "num_bits"
+                 	* As an offset can be both positive and negative, we need to add 1 sign bit to "num_bits".
+                 	* */
+		}
+
+                //num_bits += 2; //Not needed if the distance/displacement is in 4 byte instructions instead of bytes
+
+/**********************************************************************************************************************/
+                uint64_t diff_bits = (branch_target >> 2) ^ (ip >> 2);
+                int num_lower_bits = 0;
+                while (diff_bits != 0) {
+                        diff_bits = diff_bits >> 1;
+                        num_lower_bits++;
+                }
+                //cout << "Target " << hex << branch_target << " ip " << ip << " num_bits " << dec << num_bits << " num_lower_bits " << num_lower_bits << endl;
+
+                if ((num_bits - 3) > num_lower_bits) {
+			cout << "Target " << hex << branch_target << " ip " << ip << " num_bits " << dec << num_bits << " num_lower_bits " << num_lower_bits << endl;
+                        cout << "This is wierd" << endl;
+                        assert(0);
+                }
+
+/*********************************************************************************************************************/
+		//if (branch_type != BRANCH_RETURN) {
+                    disp[num_bits]++;
+		    lowBits[num_lower_bits]++;
+		//}
+                assert(num_bits >= 0 && num_bits < 66);
+
+        }
+	if (branch_type == BRANCH_RETURN) {
+		    disp[0]++;
+                    lowBits[0]++;
+	}
+}
+
+void O3_CPU::l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit)
+{
+  if((cache_hit == 0) && (L1I.MSHR.occupancy < (L1I.MSHR.SIZE>>1)))
+    {
+      uint64_t pf_addr = v_addr + (1<<LOG2_BLOCK_SIZE);
+      prefetch_code_line(pf_addr);///Yash NL prefetching the next line
+    }
+}
+
+void O3_CPU::l1i_prefetcher_cycle_operate()
+{
+
+	ifetch_replica = &IFETCH_BUFFER; ///Gives access to repl policy
+
+	/*Issue prefetches*/
+
+	if (prefetch_queue.size()) {
+		if (L1I.MSHR.occupancy < (L1I.MSHR.SIZE>>1) && L1I.PQ.occupancy < L1I.PQ.SIZE) {
+			prefetch_code_line(prefetch_queue.front());
+			recent_prefetches.push_back(prefetch_queue.front());
+			if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
+				recent_prefetches.pop_front();
+			}
+	
+			prefetch_queue.pop_front();
+		}
+	} else if (prefetch_queue_spec.size()) {
+			if (L1I.MSHR.occupancy < (L1I.MSHR.SIZE>>1) && L1I.PQ.occupancy < L1I.PQ.SIZE) {
+			prefetch_code_line(prefetch_queue_spec.front());
+			recent_prefetches.push_back(prefetch_queue_spec.front());
+			if (recent_prefetches.size() > MAX_RECENT_PFETCH) {
+				recent_prefetches.pop_front();
+			}
+	
+			prefetch_queue_spec.pop_front();
+		}
+	}	
+}
+
+void O3_CPU::l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr)
+{
+
+}
+
+void O3_CPU::l1i_prefetcher_final_stats()
+{
+        for(int i = 0; i < 66; i++) {
+                cout << "XXX disp-" << i << " " << disp[i] << endl;
+        }
+
+        for(int i = 0; i < 66; i++) {
+                cout << "XXX diffBits-" << i << " " << lowBits[i] << endl;
+        }
+}
+
+
+void CACHE::l1i_initialize_replacement()
+{
+	::last_used_cycles[this] = std::vector<uint64_t>(NUM_SET * NUM_WAY);
+}
+
+// find replacement victim
+uint32_t CACHE::l1i_find_victim(uint32_t cpu, uint64_t instr_id, uint32_t set, const BLOCK *current_set, uint64_t ip, uint64_t full_addr, uint32_t type)
+{
+    // baseline LRU
+    // return lru_victim(cpu, instr_id, set, current_set, ip, full_addr, type); 
+
+	//convert the ifetch_replica core buffer ips into a deque of them
+	std::deque<uint64_t> iftch;
+	for(int i = 0;i<MAX_UNSPECQ_ENTRIES;i++){
+		uint64_t add = ifetch_replica->entry[i].ip;
+		iftch.push_back(add);
+	}
+	//first iftch then second is spec_queue
+
+	std::vector<std::pair<uint64_t,uint64_t>> way_priorities;
+
+	auto begin = std::next(std::begin(::last_used_cycles[this]), set * NUM_WAY);
+	auto end = std::next(begin, NUM_WAY);
+
+	//iterate from begin to end
+	for (auto itr = begin; itr!=end;itr++){
+		assert(way_priorities.size()==std::distance(begin,itr));
+		uint64_t index = std::distance(begin,itr);
+		uint64_t pos = 100000;
+
+		//iterate through the iftch deque for the current ip
+		uint64_t curr_ip = current_set[index].address << LOG2_BLOCK_SIZE;
+
+		//iterate through the iftch deque for the current ip and find the position
+		for (auto it = iftch.begin();it!=iftch.end();it++){
+			if (*it >= curr_ip && *it < curr_ip + BLOCK_SIZE){
+				pos = std::distance(iftch.begin(),it);
+				break;
+			}
+		}
+		if (pos == 100000){
+			//iterate through the spec_queue deque for the current ip and find the position
+			for (auto it = spec_queue.begin();it!=spec_queue.end();it++){
+				if (*it >= curr_ip && *it < curr_ip + BLOCK_SIZE){
+					pos = 128/*Yash ifetch buffer size*/ + std::distance(spec_queue.begin(),it);
+					break;
+				}
+			}
+		}
+		assert(index<NUM_WAY && index>=0);
+		way_priorities.push_back(std::pair<uint64_t,uint64_t>(pos,::last_used_cycles[this].at(set * NUM_WAY + index)));
+	}
+	// find the index of the pair with the maximum first and minimum second
+	auto victim = std::min_element(way_priorities.begin(),way_priorities.end(),[](const std::pair<uint64_t,uint64_t>& a, const std::pair<uint64_t,uint64_t>& b){
+		return a.first < b.first || (a.first == b.first && a.second < b.second);
+	});
+	// Find the way whose last use cycle is most distant
+	// auto victim = std::min_element(begin, end);
+	//*victim=0;//frequency set to zero
+	// assert(begin <= victim);
+	// assert(victim < end);
+	return static_cast<uint32_t>(std::distance(way_priorities.begin(), victim)); // cast protected by prior asserts
+}
+
+// called on every cache hit and cache fill
+void CACHE::l1i_update_replacement_state(uint32_t cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr, uint32_t type, uint8_t hit)
+{
+	// Mark the way as being used on the current cycle
+	if (hit) // Skip this for writeback hits
+		::last_used_cycles[this].at(set * NUM_WAY + way)+=1;//frequency incremented at each hit
+	else ::last_used_cycles[this].at(set * NUM_WAY + way)=0;
+    // string TYPE_NAME;
+    // if (type == LOAD)
+    //     TYPE_NAME = "LOAD";
+    // else if (type == RFO)
+    //     TYPE_NAME = "RFO";
+    // else if (type == PREFETCH)
+    //     TYPE_NAME = "PF";
+    // else if (type == WRITEBACK)
+    //     TYPE_NAME = "WB";
+    // else
+    //     assert(0);
+
+    // if (hit)
+    //     TYPE_NAME += "_HIT";
+    // else
+    //     TYPE_NAME += "_MISS";
+
+    // if ((type == WRITEBACK) && ip)
+    //     assert(0);
+
+    // // uncomment this line to see the LLC accesses
+    // // cout << "CPU: " << cpu << "  LLC " << setw(9) << TYPE_NAME << " set: " << setw(5) << set << " way: " << setw(2) << way;
+    // // cout << hex << " paddr: " << setw(12) << paddr << " ip: " << setw(8) << ip << " victim_addr: " << victim_addr << dec << endl;
+
+    // // baseline LRU
+    // if (hit && (type == WRITEBACK)) // writeback hit does not update LRU state
+    //     return;
+
+    // return lru_update(set, way);
+}
+
+void CACHE::l1i_replacement_final_stats()
+{
+
+}

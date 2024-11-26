@@ -1,0 +1,147 @@
+Okay so where are the l1I functionalities called
+
+All the machinery related to the decoupled front end and the l1I cache, fetch queue is in ooo_cpu.h/.cc and block.h contains the definition for the fetch queue.
+
+I expect the fetch machinery to dequeue a instr packet from the FTQ and then decode and add it to the ROB (form here it is the backend)
+
+So, ooo_cpu contains functions that manage the front end, 
+
+Also, main.cc is the only thread that runs and intiliaises every structure recursively and calls the functions in ooo_cpu 
+
+
+Lets understand how is the l1I cache structured, its a bit different
+ compared to others, we will see how it works in conjuntion with the prefetchers
+  and replacement policies
+
+
+        void read_from_trace(),
+                well this function is gold where everything kinds begins
+                instructions are read step by step from the trace, and added to the ifetch buffer (which we are calling the FTQ)
+                at the same time, prefetch_instruction_operate is also called
+
+         spec_inst_prefetch(),
+                called in the main simulation loop when there is a ifetch stall_cycle
+                 ( basically this or read from trace is called depending on ifetch stalls)
+
+         fetch_instruction(),
+
+            have to look
+
+         decode_and_dispatch(),
+                  complete_instr_fetch(PACKET_QUEUE *queue, uint8_t is_it_tlb),
+
+            have to look
+    void operate_cache();
+            this is kinda called in the main simulation loop to handle routine/per cycle cache functions/operations eg. hand fill etc.
+
+
+    void update_rob();
+        have to look
+    
+    uint32_t add_to_ifetch_buffer(ooo_model_instr *arch_instr);
+        just make a new entry to the ifetch buffer
+        what if it is full??
+
+
+    uint32_t add_to_decode_buffer(ooo_model_instr *arch_instr);
+
+        similar as above but in a decode buffer
+
+    void l1i_prefetcher_initialize(); 
+        this is called in main.cc the main thread that runs
+
+    void l1i_prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target);
+        coming to this
+  
+  
+  
+    void l1i_prefetcher_instruction_operate(uint64_t ip);
+
+        well this is new - lets see - a function specially for fdip perhaps - well dont believe 
+        this line - Im just yapping my understanding
+        this is called by the read from trace function just after adding a new entry to the ifetch buffer
+
+
+
+
+Note: We observe two main functions acting here - l1i_prefetcher_instruction_operate and its speculative counterpart 
+    if stall then call speculative counterpart
+    else call the usual one 
+
+    Both of these take the ip just read from trace 
+
+    So, if FDIP is making its play, then its kinda working directly on these ip's, but arent these kinda very precise IPs? huh? shouldnt we rather act on the branch predicted instruction
+
+    Champsim simulates branch mispredictions as constant penalties! but it isnt so! 
+    Umm, so if we want to simulate FDIP, then we need to maintain an 
+    artificial Fetch Queue apart from the ifetch buffer as the ifetch buffer does not take into account branch mispredictions
+
+    To correctly simulate FDIP in champsim, we can modify champsim by an added queue, we enqueue the
+     branch predictions in the fetch queue, we start making prefetches just as the lines are enqueued
+     but just as these branch instructions reach the start of the artificial queue, we check if thr branch target according
+      to the trace v/s prediction was correct or not, if correct our insertions in the prefetch queue were correct, proceed as directed
+      but if we detected a misprediction, we just flush the queue. we add fill the queue one per cycle
+
+        the above idea may only work for mpkis as the branch mispredictions are only taken by a constant penalty while calculating the cycles
+
+      This is just an idea, lets see the existing implementation
+
+
+
+  void l1i_prefetcher_instruction_spec_operate(uint64_t ip);
+         spec_inst_prefetch() calls the above function
+
+
+
+  void l1i_prefetcher_cache_operate(uint64_t v_addr, uint8_t cache_hit, uint8_t prefetch_hit);
+        this is called when a tag bit is checked during a load or a write request, 
+        not during prefetch requests on the cache (kinda makes sense? why would you?
+         cause its your own l1I prefetcher that add to the l1 preftech queue, why
+          would you check your own request?)
+    
+  
+  void l1i_prefetcher_cycle_operate();
+        called in O3_CPU::operate_cache() where l1I.operate is also called
+        which is called in O3_CPU::execute_memory_instruction
+        which is called in the main.cc simulation loop - ```while (run_simulation) ```
+        
+        so this is called literally every cycle
+
+
+
+  void l1i_prefetcher_cache_fill(uint64_t v_addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_v_addr);
+        must be called when the lower prefetcher (L2) returns the data to the higher prefetecher (l1I) 
+        this happens in handle prefetch/read ( like when there was a cache miss )
+
+        called in handle_fill and handle_writeback
+        both of which are called in cache operate (which is called in the main simulation loop)
+
+        So basically handle functions are called every cycle, and they basically fill the cache 
+        when the fill buffer entry corresponding to the mshr entry when data/instr is returned\
+         from lower level caches to higher level caches
+
+  
+  
+  void l1i_prefetcher_final_stats();
+        called when the simulation/warmup terminates - cache prints the stats
+
+  int prefetch_code_line(uint64_t pf_v_addr); ///Yash This just appends the packet to the prefetch queue
+        //adds the corresponding ip line to the prefetch queue of l1I 
+        then it is l1I which handles the prefetch -> how?
+            picks up the packet from the queue
+
+
+
+
+      CORE_BUFFER IFETCH_BUFFER{"IFETCH_BUFFER", /*128*/FETCH_WIDTH*2}; ///Yash FTQ probably
+    CORE_BUFFER DECODE_BUFFER{"DECODE_BUFFER", DECODE_WIDTH*3};
+    CORE_BUFFER ROB{"ROB", ROB_SIZE};
+
+
+
+handle_prefetch in cache.cc works in the following way
+it checks the prefetch queue, if finds prefetch hit - update replacement state (part of cache and not the core)
+
+initialise where?
+
+

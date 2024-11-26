@@ -1,0 +1,255 @@
+*** ChampSim Multicore Out-of-Order Simulator ***
+
+Warmup Instructions: 10000000
+Simulation Instructions: 25000000
+Number of CPUs: 1
+LLC sets: 2048
+LLC ways: 16
+Off-chip DRAM Size: 4096 MB Channels: 1 Width: 64-bit Data Rate: 3200 MT/s
+
+CPU 0 runs ./dpc3_traces/server_026.champsimtrace.xz
+Basic BTB sets: 4096 ways: 4 indirect buffer size: 4096 RAS size: 64
+Heartbeat CPU 0 instructions: 10000000 cycles: 3636777 heartbeat IPC: 2.74969 cumulative IPC: 2.74969 (Simulation time: 0 hr 1 min 8 sec)
+
+Warmup complete CPU 0 instructions: 10000001 cycles: 3636779 (Simulation time: 0 hr 1 min 8 sec)
+
+Heartbeat CPU 0 instructions: 20000002 cycles: 26760640 heartbeat IPC: 0.432454 cumulative IPC: 0.432454 (Simulation time: 0 hr 2 min 41 sec)
+Heartbeat CPU 0 instructions: 30000000 cycles: 49770728 heartbeat IPC: 0.434592 cumulative IPC: 0.43352 (Simulation time: 0 hr 4 min 15 sec)
+Finished CPU 0 instructions: 25000002 cycles: 57561325 cumulative IPC: 0.434319 (Simulation time: 0 hr 4 min 59 sec) 
+
+ChampSim completed all CPUs
+
+Region of Interest Statistics
+
+CPU 0
+XXX cumulative-IPC 0.434319
+XXX instructions 25000002
+XXX cycles 57561325
+L1D TOTAL     ACCESS:    7017500  HIT:    5746617  MISS:    1270883
+L1D LOAD      ACCESS:    3940723  HIT:    2901962  MISS:    1038761
+L1D RFO       ACCESS:    3076777  HIT:    2844655  MISS:     232122
+L1D PREFETCH  ACCESS:          0  HIT:          0  MISS:          0
+L1D WRITEBACK ACCESS:          0  HIT:          0  MISS:          0
+L1D PREFETCH  REQUESTED:          0  ISSUED:          0
+XXX L1D-USEFUL 0
+XXX L1D-USELESS 0
+L1D AVERAGE MISS LATENCY: 31.2668 cycles
+L1I TOTAL     ACCESS:    9247963  HIT:    6352019  MISS:    2895944
+L1I LOAD      ACCESS:    3737666  HIT:    2891945  MISS:     845721
+L1I RFO       ACCESS:          0  HIT:          0  MISS:          0
+L1I PREFETCH  ACCESS:    5510297  HIT:    3460074  MISS:    2050223
+L1I WRITEBACK ACCESS:          0  HIT:          0  MISS:          0
+L1I PREFETCH  REQUESTED:    6370636  ISSUED:    6370636
+XXX L1I-USEFUL 655409
+XXX L1I-USELESS 1394667
+L1I AVERAGE MISS LATENCY: 42.5535 cycles
+L2C TOTAL     ACCESS:    4615974  HIT:    1754231  MISS:    2861743
+L2C LOAD      ACCESS:    1253814  HIT:     847802  MISS:     406012
+L2C RFO       ACCESS:     229990  HIT:     188302  MISS:      41688
+L2C PREFETCH  ACCESS:    2678942  HIT:     265358  MISS:    2413584
+L2C WRITEBACK ACCESS:     453228  HIT:     452769  MISS:        459
+L2C PREFETCH  REQUESTED:          0  ISSUED:          0
+XXX L2C-USEFUL 31871
+XXX L2C-USELESS 2381529
+L2C AVERAGE MISS LATENCY: 40.4755 cycles
+LLC TOTAL     ACCESS:    2937973  HIT:    2917493  MISS:      20480
+LLC LOAD      ACCESS:     406012  HIT:     400054  MISS:       5958
+LLC RFO       ACCESS:      41688  HIT:      32486  MISS:       9202
+LLC PREFETCH  ACCESS:    2413584  HIT:    2408273  MISS:       5311
+LLC WRITEBACK ACCESS:      76689  HIT:      76680  MISS:          9
+LLC PREFETCH  REQUESTED:          0  ISSUED:          0
+XXX LLC-USEFUL 147
+XXX LLC-USELESS 114
+LLC AVERAGE MISS LATENCY: 131.591 cycles
+Major fault: 0 Minor fault: 1944
+XXX disp-0 772678
+XXX disp-1 0
+XXX disp-2 682
+XXX disp-3 161996
+XXX disp-4 393161
+XXX disp-5 387509
+XXX disp-6 437030
+XXX disp-7 273368
+XXX disp-8 207351
+XXX disp-9 165085
+XXX disp-10 104032
+XXX disp-11 74183
+XXX disp-12 40214
+XXX disp-13 48212
+XXX disp-14 43094
+XXX disp-15 49371
+XXX disp-16 24212
+XXX disp-17 22816
+XXX disp-18 51440
+XXX disp-19 42151
+XXX disp-20 46891
+XXX disp-21 95699
+XXX disp-22 60254
+XXX disp-23 125195
+XXX disp-24 36612
+XXX disp-25 0
+XXX disp-26 0
+XXX disp-27 0
+XXX disp-28 0
+XXX disp-29 0
+XXX disp-30 0
+XXX disp-31 0
+XXX disp-32 0
+XXX disp-33 0
+XXX disp-34 0
+XXX disp-35 0
+XXX disp-36 0
+XXX disp-37 0
+XXX disp-38 0
+XXX disp-39 0
+XXX disp-40 0
+XXX disp-41 0
+XXX disp-42 0
+XXX disp-43 0
+XXX disp-44 0
+XXX disp-45 0
+XXX disp-46 96969
+XXX disp-47 0
+XXX disp-48 0
+XXX disp-49 0
+XXX disp-50 0
+XXX disp-51 0
+XXX disp-52 0
+XXX disp-53 0
+XXX disp-54 0
+XXX disp-55 0
+XXX disp-56 0
+XXX disp-57 0
+XXX disp-58 0
+XXX disp-59 0
+XXX disp-60 0
+XXX disp-61 0
+XXX disp-62 0
+XXX disp-63 0
+XXX disp-64 0
+XXX disp-65 0
+XXX diffBits-0 772678
+XXX diffBits-1 505
+XXX diffBits-2 61270
+XXX diffBits-3 232042
+XXX diffBits-4 268557
+XXX diffBits-5 314846
+XXX diffBits-6 264435
+XXX diffBits-7 340168
+XXX diffBits-8 208362
+XXX diffBits-9 232883
+XXX diffBits-10 108111
+XXX diffBits-11 106649
+XXX diffBits-12 65341
+XXX diffBits-13 60401
+XXX diffBits-14 24133
+XXX diffBits-15 36241
+XXX diffBits-16 49546
+XXX diffBits-17 37543
+XXX diffBits-18 28449
+XXX diffBits-19 43007
+XXX diffBits-20 101337
+XXX diffBits-21 89375
+XXX diffBits-22 143601
+XXX diffBits-23 0
+XXX diffBits-24 0
+XXX diffBits-25 73756
+XXX diffBits-26 0
+XXX diffBits-27 0
+XXX diffBits-28 0
+XXX diffBits-29 0
+XXX diffBits-30 0
+XXX diffBits-31 0
+XXX diffBits-32 0
+XXX diffBits-33 0
+XXX diffBits-34 0
+XXX diffBits-35 0
+XXX diffBits-36 0
+XXX diffBits-37 0
+XXX diffBits-38 0
+XXX diffBits-39 0
+XXX diffBits-40 0
+XXX diffBits-41 0
+XXX diffBits-42 0
+XXX diffBits-43 0
+XXX diffBits-44 0
+XXX diffBits-45 96969
+XXX diffBits-46 0
+XXX diffBits-47 0
+XXX diffBits-48 0
+XXX diffBits-49 0
+XXX diffBits-50 0
+XXX diffBits-51 0
+XXX diffBits-52 0
+XXX diffBits-53 0
+XXX diffBits-54 0
+XXX diffBits-55 0
+XXX diffBits-56 0
+XXX diffBits-57 0
+XXX diffBits-58 0
+XXX diffBits-59 0
+XXX diffBits-60 0
+XXX diffBits-61 0
+XXX diffBits-62 0
+XXX diffBits-63 0
+XXX diffBits-64 0
+XXX diffBits-65 0
+
+DRAM Statistics
+ CHANNEL 0
+ RQ ROW_BUFFER_HIT:      10090  ROW_BUFFER_MISS:      10368
+ DBUS_CONGESTED:       6729
+ WQ ROW_BUFFER_HIT:        124  ROW_BUFFER_MISS:       1516  FULL:          0
+
+ AVG_CONGESTED_CYCLE: 6
+
+CPU 0 Branch Prediction Accuracy: 69.0416% MPKI: 56.588 Average ROB Occupancy at Mispredict: 47.0464
+
+XXX total_mispredicts 1414701
+XXX total_target_mispredicts1 923716
+XXX total_target_mispredicts2 485661
+XXX total_direction_mispredicts 5324
+XXX mispredict_on_btb_hit 82920
+XXX NOT_BRANCH: 0
+XXX BRANCH_DIRECT_JUMP: 0
+XXX BRANCH_INDIRECT: 7767
+XXX BRANCH_CONDITIONAL: 0
+XXX BRANCH_DIRECT_CALL: 0
+XXX BRANCH_INDIRECT_CALL: 6445
+XXX BRANCH_RETURN: 68708
+XXX BRANCH_OTHER: 0
+Branch types
+NOT_BRANCH: 20429891 81.7196%
+BRANCH_DIRECT_JUMP: 261224 1.0449%
+BRANCH_INDIRECT: 102452 0.409808%
+BRANCH_CONDITIONAL: 3106463 12.4259%
+BRANCH_DIRECT_CALL: 463371 1.85348%
+BRANCH_INDIRECT_CALL: 86405 0.34562%
+BRANCH_RETURN: 549770 2.19908%
+BRANCH_OTHER: 0 0%
+
+XXX BTB_reads: 120047055
+XXX BTB_writes: 2965735
+XXX PageBTB_reads: 0
+XXX PageBTB_writes: 0
+XXX PageBTB_readsBeforeWrite: 0
+XXX RegionBTB_reads: 0
+XXX RegionBTB_writes: 0
+XXX RegionBTB_readsBeforeWrite: 0
+XXX BTB_4D_Hits 265515
+XXX BTB_6D_Hits 224992
+XXX BTB_8D_Hits 320974
+XXX BTB_12D_Hits 79007
+XXX BTB_18D_Hits 62276
+XXX BTB_25D_Hits 56432
+XXX BTB_46D_Hits 58569
+XXX BTB_Ret_Hits 289037
+XXX BTB_4D_Misses 135407
+XXX BTB_6D_Misses 90699
+XXX BTB_8D_Misses 183158
+XXX BTB_12D_Misses 153804
+XXX BTB_18D_Misses 101977
+XXX BTB_25D_Misses 178374
+XXX BTB_46D_Misses 222305
+XXX BTB_Ret_Misses 260733
+XXX Num_unique_branches 9970
