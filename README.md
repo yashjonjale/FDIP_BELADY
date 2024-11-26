@@ -51,12 +51,4 @@ Running a single workload: Use the following command (in directory /<Path_to_cod
 
 This command will simulate server_001 workload with BTBX and no instruction prefetching.
 
-# Collecting results
 
-Go to directory /<Path_to_code>/collectStats/. Run the script getResults.sh, and it will collect results from all workloads and save them in a file “all_res”.
-
-# Plotting results
-
-Download the “all_res” file. Open the provided excel file "BTBX_artifact_results.xlsx". Click on “Data” in MS-Excel top menu bar. Click on “Refresh All” in “Queries and Connections” ribbon, go to the folder where you stored “all_res” and double click on “all_res”. Now “Offset Distribution”, “MPKI”, and “Performance” sheets in the excel file should have plots for Figure 4, Figure 9, and Figure 10 respectively. 
-
-# BTBX-HPCA23
